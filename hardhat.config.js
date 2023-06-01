@@ -1,138 +1,83 @@
-require('@nomicfoundation/hardhat-toolbox')
-require('@nomiclabs/hardhat-solhint')
-require('solidity-coverage')
-require("hardhat-gas-reporter")
-require('hardhat-contract-sizer')
-require('solidity-coverage')
-require('@nomiclabs/hardhat-solhint')
+require("@nomicfoundation/hardhat-toolbox")
+require("hardhat-contract-sizer")
+require("@openzeppelin/hardhat-upgrades")
+require("./tasks")
+require("@chainlink/env-enc").config()
+const { networks } = require("./networks")
 
+// Enable gas reporting (optional)
+const REPORT_GAS = process.env.REPORT_GAS?.toLowerCase() === "true" ? true : false
+
+const SOLC_SETTINGS = {
+  optimizer: {
+    enabled: true,
+    runs: 1_000,
+  },
+}
+
+/** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
-  defaultNetwork: 'hardhat',
+  defaultNetwork: "hardhat",
+  solidity: {
+    compilers: [
+      {
+        version: "0.8.7",
+        settings: SOLC_SETTINGS,
+      },
+      {
+        version: "0.7.0",
+        settings: SOLC_SETTINGS,
+      },
+      {
+        version: "0.6.6",
+        settings: SOLC_SETTINGS,
+      },
+      {
+        version: "0.4.24",
+        settings: SOLC_SETTINGS,
+      },
+    ],
+  },
   networks: {
     hardhat: {
-      chainId: 31337
+      allowUnlimitedContractSize: true,
+      accounts: process.env.PRIVATE_KEY
+        ? [
+            {
+              privateKey: process.env.PRIVATE_KEY,
+              balance: "10000000000000000000000",
+            },
+          ]
+        : [],
     },
-    localDev: {
-      url: `HTTP://127.0.0.1:8545`,
-      chainId: 1337,
-      saveDeployments: true,
-      tags: ['local', 'test']
-    },
-    mainnet: {
-      url: `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
-      chainId: 1,
-      accounts: [],
-      blockConfirmations: 5,
-      timeout: 600000,
-    },
-    polygon: {
-      url: `https://polygon-mainnet.infura.io/v3/`, //needs edit
-      chainId: 137,
-      accounts: [],
-      blockConfirmations: 5,
-      timeout: 600000,
-    },
-    binance: {
-      url: `https://bsc-dataseed.binance.org/`,
-      chainId: 56,
-      accounts: [],
-      blockConfirmations: 5,
-      timeout: 600000,
-    },
-    goerli: { 
-      url: `https://goerli.infura.io/v3/${process.env.INFURA_API_KEY}`,
-      chainId: 5,
-      accounts: [],
-      blockConfirmations: 5,
-      timeout: 600000,
-      saveDeployments: true,
-      live: true,
-      tags: ['staging']
-    },
-    sepolia: {
-      url: `https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`,
-      chainId: 11155111,
-      accounts: [
-        // `0x${process.env.ADMIN_KEY}`, 
-        // `0x${process.env.UPGRADER_KEY}`, 
-        // `0x${process.env.OTHER_KEY}`, 
-        // `0x${process.env.MINTER_KEY}`,
-        // //`0x${process.env.OWNER_KEY}`,
-        // `0x${process.env.MANAGER_KEY}`,
-      ],
-      blockConfirmations: 5,
-      timeout: 600000,
-      saveDeployments: true,
-      live: true,
-      tags: ['staging', 'backToBack']
-    },
-    mumbai: {
-      url: `https://polygon-mumbai.infura.io/v3/`,
-      chainId: 80001,
-      accounts: [],
-      blockConfirmations: 5,
-      timeout: 600000,
-    },
-    bnbTest: {
-      url: `https://data-seed-prebsc-1-s1.binance.org:8545`,
-      chainId: 97,
-      blockConfirmations: 5,
-      timeout: 600000,
-    }
+    ...networks,
   },
-  namedAccounts: {
-    deployer: {
-      default: 0,
-      sepolia: process.env.ADMIN
+  etherscan: {
+    // npx hardhat verify --network <NETWORK> <CONTRACT_ADDRESS> <CONSTRUCTOR_PARAMETERS>
+    // to get exact network names: npx hardhat verify --list-networks
+    apiKey: {
+      sepolia: networks.ethereumSepolia.verifyApiKey,
+      polygonMumbai: networks.polygonMumbai.verifyApiKey,
+      avalancheFujiTestnet: networks.avalancheFuji.verifyApiKey,
     },
-    manager1: {
-      default: 1,
-      sepolia: process.env.MANAGER1
-    },
-    manager2: {
-      default: 2,
-      sepolia: process.env.MANAGER2
-    },
-    mocker: {
-      default: 3,
-    }
   },
   gasReporter: {
-    enabled: true,
-    coinmarketcap: process.env.COINMARKETCAP,
-    outputFile: "gasReporter.txt",
-    noColors: false,
-    currency: "USD", 
+    enabled: REPORT_GAS,
+    currency: "USD",
+    outputFile: "gas-report.txt",
+    noColors: true,
   },
-  solidity: {
-    version: '0.8.10',
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 500,
-      }
-    }
-  },
-  mocha: {
-    timeout: 100000.
+  contractSizer: {
+    runOnCompile: false,
+    only: ["FunctionsConsumer", "AutomatedFunctionsConsumer", "FunctionsBillingRegistry"],
   },
   paths: {
     sources: "./contracts",
-    scripts: "./scripts",
     tests: "./test",
-    artifacts: "./artifacts",
-    cache: "./cache",
-    slither: "./slither"
+    cache: "./build/cache",
+    artifacts: "./build/artifacts",
   },
-  etherscan: {
-    apiKey: {
-      // mainnet: process.env.ETHER_API,
-      polygon: process.env.POLYGON_API,
-      // binance: process.env.BNB_API,
-      sepolia: process.env.SEPOLIA_API,
-      // goerli: process.env.ETHER_API,
-      mumbai: process.env.POLYGON_API,
-      // bnbTest:  process.env.BNB_API,
-    },
+  mocha: {
+    timeout: 200000, // 200 seconds max for running tests
   },
-};
+}
