@@ -30,8 +30,8 @@ const requestConfig = {
   codeLanguage: CodeLanguage.JavaScript,
   // String containing the source code to be executed
   //source: fs.readFileSync("./prove.js").toString(),
-  //source: fs.readFileSync("./fetch-price-predict.js").toString(),
-  source: fs.readFileSync("./fetch-risk.js").toString(),
+  source: fs.readFileSync("./fetch-price-predict.js").toString(),
+  //source: fs.readFileSync("./fetch-risk.js").toString(),
   // Secrets can be accessed within the source code with `secrets.varName` (ie: secrets.apiKey). The secrets object can only contain string values.
   //secrets: { apiKey: process.env.COINMARKETCAP_API_KEY ?? "" },
   // Per-node secrets objects assigned to each DON member. When using per-node secrets, nodes can only use secrets which they have been assigned.
@@ -39,7 +39,7 @@ const requestConfig = {
   // ETH wallet key used to sign secrets so they cannot be accessed by a 3rd party
   walletPrivateKey: process.env["PRIVATE_KEY"],
   // Args (string only array) can be accessed within the source code with `args[index]` (ie: args[0]).
-  args: ["05-25-2023"], //"05-25-2023"
+  args: [], //"05-25-2023"
   // Expected type of the returned value
   expectedReturnType: ReturnType.Buffer,
   // Redundant URLs which point to encrypted off-chain secrets

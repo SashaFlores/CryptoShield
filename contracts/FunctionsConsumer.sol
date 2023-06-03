@@ -4,10 +4,14 @@ pragma solidity ^0.8.7;
 import {Functions, FunctionsClient} from "./dev/functions/FunctionsClient.sol";
 // import "@chainlink/contracts/src/v0.8/dev/functions/FunctionsClient.sol"; // Once published
 import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/ConfirmedOwner.sol";
-
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 contract FunctionsConsumer is FunctionsClient, ConfirmedOwner {
   using Functions for Functions.Request;
+
+  AggregatorV3Interface internal priceFeedETH;
+  AggregatorV3Interface internal priceFeedBTC;
+  AggregatorV3Interface internal priceFeedLINK;
 
   uint64 public constant c_subscriptionId = 387;
   uint32 public constant c_gasLimit = 300000;
@@ -39,9 +43,13 @@ contract FunctionsConsumer is FunctionsClient, ConfirmedOwner {
   Functions.Request public riskRequest;
 
   event OCRResponse(bytes32 indexed requestId, bytes result, bytes err);
-  constructor(address oracle) FunctionsClient(oracle) ConfirmedOwner(msg.sender) {}
+  constructor(address oracle) FunctionsClient(oracle) ConfirmedOwner(msg.sender) {
+    priceFeedETH = AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306); // Address ETH/USD
+    priceFeedBTC = AggregatorV3Interface(0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43); // Address BTC/USD
+    priceFeedLINK = AggregatorV3Interface(0xc59E3633BAAC79493d908e63626716e204A45EdF); // Address LINK/USD
+  }
 
-  /// @note function to request price prediction stored in the api server. It returns the price predict from the current date
+  /// @notice function to request price prediction stored in the api server. It returns the price predict from the current date
   function fetchPricePredict() public{
     Functions.Request memory req;
     req = pricePredictionRequest;
@@ -50,7 +58,7 @@ contract FunctionsConsumer is FunctionsClient, ConfirmedOwner {
     latestRequestId = assignedReqID;
   }
 
-  /// @note function to request risk stored in the api server
+  /// @notice function to request risk stored in the api server
   /// @param _date date that is needed to fetch its risk in string type. Eg. "05-25-2023"
   function fetchRisk(string memory _date) public{
     Functions.Request memory req;
@@ -64,7 +72,7 @@ contract FunctionsConsumer is FunctionsClient, ConfirmedOwner {
     delete(s_args);
   }
 
-  /// @note do NOT use this function, it is used to initialize the requests
+  /// @notice do NOT use this function, it is used to initialize the requests
   function executeRequest(
     string memory source,
     bytes memory secrets,
@@ -90,7 +98,7 @@ contract FunctionsConsumer is FunctionsClient, ConfirmedOwner {
     return assignedReqID;
   }
 
-  /// @note callback function called by the chainlink nodes once they have fetched the information requested.
+  /// @notice callback function called by the chainlink nodes once they have fetched the information requested.
   ///       You can write the code to execute once the requested date has been received inside the if conditionals
   function fulfillRequest(bytes32 requestId, bytes memory response, bytes memory err) internal override {
     latestResponse = response;
@@ -103,6 +111,24 @@ contract FunctionsConsumer is FunctionsClient, ConfirmedOwner {
       // code to execute once risk has been received.
     }
     emit OCRResponse(requestId, response, err);
+  }
+
+  /// @notice Function to retrieve the ETH/USD price from chainlink price feed
+  function getLatestPriceETH() public view returns(int256){
+    (, int price, , , ) = priceFeedETH.latestRoundData();
+    return price;
+  }
+
+  /// @notice Function to retrieve the BTC/USD price from chainlink price feed
+  function getLatestPriceBTC() public view returns(int256){
+    (, int price, , , ) = priceFeedBTC.latestRoundData();
+    return price;
+  }
+
+  /// @notice Function to retrieve the LINK/USD price from chainlink price feed
+  function getLatestPriceLINK() public view returns(int256){
+    (, int price, , , ) = priceFeedLINK.latestRoundData();
+    return price;
   }
 
     function resetPricePredicts() public {
