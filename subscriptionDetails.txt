@@ -9,6 +9,8 @@ Commands:
     Remove consumer contract: npx hardhat functions-sub-remove --subid 387 --contract CONSUMER_ADDRESS --network ethereumSepolia
     Change owner: npx hardhat functions-sub-transfer --subid 387 --newowner NEW_OWNER_ADDRESS --network ethereumSepolia
 
-    Deploy consumer contract: npx hardhat functions-deploy-client --verify true --network ethereumSepolia
+    Deploy consumer contract: npx hardhat functions-deploy-client --verify false --network ethereumSepolia
 
     npx hardhat functions-request --network ethereumSepolia --contract 0xADDD8157Ecda473FDD20b4522424536f3cEbB3b5 --subid 387 --gaslimit 300000
+
+    oracleAddress = 0x649a2C205BE7A3d5e99206CEEFF30c794f0E31EC

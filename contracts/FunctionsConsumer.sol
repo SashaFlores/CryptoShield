@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
-import {Functions, FunctionsClient} from "./dev/functions/FunctionsClient.sol";
-// import "@chainlink/contracts/src/v0.8/dev/functions/FunctionsClient.sol"; // Once published
+import {Functions, FunctionsClient} from "./dev/functions/FunctionsClient.sol";   // Delete this line if you run this smart contract outside the chainlink functions hardhat kit and discomment the line below
+// import "@chainlink/contracts/src/v0.8/dev/functions/FunctionsClient.sol";      // Discomment this when you are going to deploy this smart contract outside the chainlink functions kit 
 import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/ConfirmedOwner.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
@@ -30,7 +30,6 @@ contract FunctionsConsumer is FunctionsClient, ConfirmedOwner {
   bytes public latestError;
 
   uint256 public requestCount = 0;
-  string[] public s_args;
 
   enum RequestType {
     PricePrediction,
@@ -43,14 +42,15 @@ contract FunctionsConsumer is FunctionsClient, ConfirmedOwner {
   Functions.Request public riskRequest;
 
   event OCRResponse(bytes32 indexed requestId, bytes result, bytes err);
+
   constructor(address oracle) FunctionsClient(oracle) ConfirmedOwner(msg.sender) {
     priceFeedETH = AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306); // Address ETH/USD
     priceFeedBTC = AggregatorV3Interface(0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43); // Address BTC/USD
     priceFeedLINK = AggregatorV3Interface(0xc59E3633BAAC79493d908e63626716e204A45EdF); // Address LINK/USD
   }
 
-  /// @notice function to request price prediction stored in the api server. It returns the price predict from the current date
-  function fetchPricePredict() public{
+  /// @notice function to request price prediction stored in the api server. It returns the price predict from the current date. Data has 15 decimals
+  function fetchPricePredict() public {
     Functions.Request memory req;
     req = pricePredictionRequest;
     bytes32 assignedReqID = sendRequest(req, c_subscriptionId, c_gasLimit);
@@ -58,18 +58,13 @@ contract FunctionsConsumer is FunctionsClient, ConfirmedOwner {
     latestRequestId = assignedReqID;
   }
 
-  /// @notice function to request risk stored in the api server
-  /// @param _date date that is needed to fetch its risk in string type. Eg. "05-25-2023"
-  function fetchRisk(string memory _date) public{
+  /// @notice function to request risk stored in the api server. It returns the price predict from the current date. Data has 15 decimals
+  function fetchRisk() public {
     Functions.Request memory req;
     req = riskRequest;
-    s_args.push(_date);
-    string[] memory newArgs = s_args;
-    req.addArgs(newArgs);
     bytes32 assignedReqID = sendRequest(req, c_subscriptionId, c_gasLimit);
     lastRequestType = RequestType.Risk;
     latestRequestId = assignedReqID;
-    delete(s_args);
   }
 
   /// @notice do NOT use this function, it is used to initialize the requests
@@ -82,9 +77,9 @@ contract FunctionsConsumer is FunctionsClient, ConfirmedOwner {
   ) public returns (bytes32) {
     Functions.Request memory req;
     req.initializeRequest(Functions.Location.Inline, Functions.CodeLanguage.JavaScript, source);
-    if(requestCount == 0){
+    if (requestCount == 0) {
       pricePredictionRequest = req;
-    } else if (requestCount == 1){
+    } else if (requestCount == 1) {
       riskRequest = req;
     }
     if (secrets.length > 0) {
@@ -103,10 +98,13 @@ contract FunctionsConsumer is FunctionsClient, ConfirmedOwner {
   function fulfillRequest(bytes32 requestId, bytes memory response, bytes memory err) internal override {
     latestResponse = response;
     latestError = err;
-    if(lastRequestType == RequestType.PricePrediction){
-      (highPricePrediction, lowPricePrediction, closePricePrediction) = abi.decode(response, (uint256, uint256, uint256));
+    if (lastRequestType == RequestType.PricePrediction) {
+      (highPricePrediction, lowPricePrediction, closePricePrediction) = abi.decode(
+        response,
+        (uint256, uint256, uint256)
+      );
       // code to execute once price prediction has been received.
-    } else if(lastRequestType == RequestType.Risk){
+    } else if (lastRequestType == RequestType.Risk) {
       (highRisk, lowRisk, closeRisk) = abi.decode(response, (uint256, uint256, uint256));
       // code to execute once risk has been received.
     }
@@ -114,24 +112,24 @@ contract FunctionsConsumer is FunctionsClient, ConfirmedOwner {
   }
 
   /// @notice Function to retrieve the ETH/USD price from chainlink price feed
-  function getLatestPriceETH() public view returns(int256){
+  function getLatestPriceETH() public view returns (int256) {
     (, int price, , , ) = priceFeedETH.latestRoundData();
     return price;
   }
 
   /// @notice Function to retrieve the BTC/USD price from chainlink price feed
-  function getLatestPriceBTC() public view returns(int256){
+  function getLatestPriceBTC() public view returns (int256) {
     (, int price, , , ) = priceFeedBTC.latestRoundData();
     return price;
   }
 
   /// @notice Function to retrieve the LINK/USD price from chainlink price feed
-  function getLatestPriceLINK() public view returns(int256){
+  function getLatestPriceLINK() public view returns (int256) {
     (, int price, , , ) = priceFeedLINK.latestRoundData();
     return price;
   }
 
-    function resetPricePredicts() public {
+  function resetPricePredicts() public {
     highPricePrediction = 0;
     lowPricePrediction = 0;
     closePricePrediction = 0;
