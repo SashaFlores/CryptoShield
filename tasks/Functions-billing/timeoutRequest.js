@@ -1,4 +1,4 @@
-const { networks } = require("../../networks")
+const { networks } = require("../../network-config")
 
 task("functions-timeout-requests", "Times out expired requests")
   .addParam("requestids", "1 or more request IDs to timeout separated by commas")

@@ -1,4 +1,4 @@
-const { networks } = require("../../networks")
+const { networks } = require("../../network-config")
 
 task("functions-sub-create", "Creates a new billing subscription for Functions consumer contracts")
   .addOptionalParam("amount", "Initial amount used to fund the subscription in LINK")

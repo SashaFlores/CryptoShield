@@ -31,7 +31,7 @@ const requestConfig = {
   // String containing the source code to be executed
   //source: fs.readFileSync("./prove.js").toString(),
   source: fs.readFileSync("./fetch-price-predict.js").toString(),
-  //source: fs.readFileSync("./fetch-risk.js").toString(),
+  // source: fs.readFileSync("./fetch-risk.js").toString(),
   // Secrets can be accessed within the source code with `secrets.varName` (ie: secrets.apiKey). The secrets object can only contain string values.
   //secrets: { apiKey: process.env.COINMARKETCAP_API_KEY ?? "" },
   // Per-node secrets objects assigned to each DON member. When using per-node secrets, nodes can only use secrets which they have been assigned.

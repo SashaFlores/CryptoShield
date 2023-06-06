@@ -13,6 +13,7 @@ typechain
 
 # don't push the environment vars!
 .env
+.env.enc
 
 # These environment variables are encrypted, but should not be pushed unless a secure password is used
 # .env.enc
@@ -48,6 +49,7 @@ proguard/
 
 # Log Files
 *.log
+subscriptionDetails.txt
 
 # Android Studio Navigation editor temp files
 .navigation/

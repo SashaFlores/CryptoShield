@@ -1,4 +1,4 @@
-const { networks } = require("../../networks")
+const { networks } = require("../../network-config")
 
 task("functions-sub-accept", "Accepts ownership of an Functions subscription after a transfer is requested")
   .addParam("subid", "Subscription ID")

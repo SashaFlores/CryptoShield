@@ -1,4 +1,4 @@
-const { networks } = require("../../networks")
+const { networks } = require("../../network-config")
 
 task("functions-sub-remove", "Removes a client contract from an Functions billing subscription")
   .addParam("subid", "Subscription ID")

@@ -1,4 +1,4 @@
-const { networks } = require("../../networks")
+const { networks } = require("../../network-config")
 const fs = require("fs")
 const { generateOffchainSecrets } = require("../utils/generateOffchainSecrets")
 const path = require("path")

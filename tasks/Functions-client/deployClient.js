@@ -1,5 +1,5 @@
 const { types } = require("hardhat/config")
-const { networks } = require("../../networks")
+const { networks } = require("../../network-config")
 
 task("functions-deploy-client", "Deploys the FunctionsConsumer contract")
   .addOptionalParam("verify", "Set to true to verify client contract", false, types.boolean)

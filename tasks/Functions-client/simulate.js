@@ -4,7 +4,7 @@ const {
   getDecodedResultLog,
   getRequestConfig,
 } = require("../../FunctionsSandboxLibrary")
-const { networks, SHARED_DON_PUBLIC_KEY } = require("../../networks")
+const { networks, SHARED_DON_PUBLIC_KEY } = require("../../network-config")
 const path = require("path")
 const process = require("process")
 

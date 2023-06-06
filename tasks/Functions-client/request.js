@@ -1,6 +1,6 @@
 const { getDecodedResultLog, getRequestConfig } = require("../../FunctionsSandboxLibrary")
 const { generateRequest } = require("./buildRequestJSON")
-const { networks } = require("../../networks")
+const { networks } = require("../../network-config")
 const utils = require("../utils")
 const chalk = require("chalk")
 const { deleteGist } = require("../utils/github")

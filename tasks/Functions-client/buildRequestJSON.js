@@ -1,6 +1,6 @@
 const { simulateRequest, buildRequest, getRequestConfig } = require("../../FunctionsSandboxLibrary")
 const { generateOffchainSecrets } = require("../utils/generateOffchainSecrets")
-const { networks } = require("../../networks")
+const { networks } = require("../../network-config")
 const utils = require("../utils")
 const axios = require("axios")
 const fs = require("fs")

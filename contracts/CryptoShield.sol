@@ -1,153 +1,108 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.0;
 
+import "./dev/functions/FunctionsClient.sol";
+import "@chainlink/contracts/src/v0.8/ConfirmedOwner.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
-contract Insurance is ReentrancyGuard {
-  AggregatorV3Interface internal priceFeed;
+contract CryptoShield is FunctionsClient, ConfirmedOwner, ReentrancyGuard {
+  using Functions for Functions.Request;
 
-  error WrongMonthAmountInsurance();
-  error NoFundsToWithdraw();
+  /**
+   * un-used variables momentarily
+   */
+  // AggregatorV3Interface private priceFeedBTC;
+  // AggregatorV3Interface private priceFeedLINK;
+  AggregatorV3Interface private priceFeedETH;
 
-  event InsuranceCreation(
-    address indexed creator,
-    uint indexed insuredAmount,
-    uint indexed percentageCoverage,
-    uint premiumPaid,
-    uint insuranceCreationDate,
-    uint insuranceExpiration
-  );
+  //
+  bytes32 public latestRequestId;
+  bytes public latestResponse;
+  bytes public latestError;
 
-  struct InsuranceInfo {
-    address insuredUser;
-    uint currentPrice;
-    uint insuredAmount;
-    uint percentageCoverage;
-    uint insuranceCreationDate;
-    uint insuranceExpirationDate;
-    bool finished;
+  uint256 private requestCount = 0;
+  uint256 private highRisk;
+  uint256 private lowRisk;
+  uint256 private closeRisk;
+  uint256 private highPrice;
+  uint256 private lowPrice;
+  uint256 private closePrice;
+
+  RequestType private lastRequestType;
+
+  Functions.Request private priceRequest;
+  Functions.Request private riskRequest;
+
+  enum RequestType {
+    PricePrediction,
+    Risk
   }
 
-  uint public s_lastPrice;
-  uint8 decimals = 8;
+  uint64 private constant _subscriptionId = 387;
+  uint32 private constant _gasLimit = 300000;
 
-  uint256[3] s_monthPremiums = [30, 50, 70]; // USD per ETH insured
-  uint256[3] s_percentageCoverage = [10, 20, 30];
+  constructor(address oracle) FunctionsClient(oracle) ConfirmedOwner(msg.sender) {
+    priceFeedETH = AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306);
+  }
 
-  uint256 s_insuranceIndexEnd = 1;
-  uint256 public s_insuranceIndexStart = 1;
-  uint256[] public s_insuranceIndexs;
-
-  // index of insurance to insurance info
-  mapping(uint256 => InsuranceInfo) public s_insurances;
-
-  mapping(address => uint256) public balanceOf;
-
-  modifier checkMonths(uint8 _months) {
-    if (_months == 0 || _months > 3) {
-      revert WrongMonthAmountInsurance();
+  function executeRequest(
+    string memory source,
+    bytes memory secrets,
+    string[] memory args,
+    uint64 subscriptionId,
+    uint32 gasLimit
+  ) public onlyOwner returns (bytes32) {
+    Functions.Request memory req;
+    req.initializeRequest(Functions.Location.Inline, Functions.CodeLanguage.JavaScript, source);
+    if (requestCount == 0) {
+      priceRequest = req;
+    } else if (requestCount == 1) {
+      riskRequest = req;
     }
-    _;
-  }
-
-  modifier checkFunds(address user) {
-    if (balanceOf[user] == 0) {
-      revert NoFundsToWithdraw();
+    if (secrets.length > 0) {
+      req.addRemoteSecrets(secrets);
     }
-    _;
+    if (args.length > 0) req.addArgs(args);
+
+    bytes32 assignedReqID = sendRequest(req, subscriptionId, gasLimit);
+    latestRequestId = assignedReqID;
+    requestCount++;
+    return assignedReqID;
   }
 
-  constructor() {
-    s_insuranceIndexs.push(0);
-    priceFeed = AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306); // Address ETH/USD
-
-    // Erase below
-    (, int price, , , ) = priceFeed.latestRoundData();
-    price = price / int(10 ** decimals);
-    uint roundedPrice = uint(price);
-    s_lastPrice = roundedPrice;
+  function getLatestPriceETH() public view returns (int256) {
+    (, int price, , , ) = priceFeedETH.latestRoundData();
+    return price;
   }
 
-  function requestQuote(uint _amount, uint8 _monthsCoverage) public view checkMonths(_monthsCoverage) returns (uint) {
-    uint256 premiumToPayUSD = (s_monthPremiums[_monthsCoverage - 1] * _amount) / (10 ** 18);
-    uint256 premiumToPayWei = ((premiumToPayUSD * 10 ** 8) / (s_lastPrice)) * 10 ** 10;
-    return premiumToPayWei;
-  }
-
-  function createInsurance(uint _amount, uint8 _monthsCoverage) external payable checkMonths(_monthsCoverage) {
-    uint256 premiumToPay = requestQuote(_amount, _monthsCoverage);
-    require(msg.value == premiumToPay, "Wrong amount funded");
-
-    InsuranceInfo memory newInsurance = InsuranceInfo({
-      insuredUser: msg.sender,
-      currentPrice: s_lastPrice,
-      insuredAmount: _amount,
-      percentageCoverage: s_percentageCoverage[_monthsCoverage - 1],
-      insuranceCreationDate: block.timestamp,
-      insuranceExpirationDate: block.timestamp + _monthsCoverage * 1 minutes, //block.timestamp + (_monthsCoverage * 30 days),
-      finished: false
-    });
-
-    s_insurances[s_insuranceIndexEnd] = newInsurance;
-    s_insuranceIndexs.push(s_insuranceIndexEnd);
-    unchecked {
-      s_insuranceIndexEnd++;
-    }
-
-    emit InsuranceCreation(
-      msg.sender,
-      _amount,
-      s_percentageCoverage[_monthsCoverage - 1],
-      premiumToPay,
-      block.timestamp,
-      block.timestamp + (_monthsCoverage * 30 days)
-    );
-  }
-
-  function insuranceExpirationCheck() external {
-    bool beggining = true;
-    for (uint256 i = s_insuranceIndexStart; i < s_insuranceIndexEnd; i++) {
-      if (s_insuranceIndexs[i] != 0) {
-        beggining = false;
-        if (
-          s_insurances[s_insuranceIndexs[i]].finished == false &&
-          s_insurances[s_insuranceIndexs[i]].insuranceExpirationDate < block.timestamp
-        ) {
-          InsuranceInfo memory expiredInsurance = s_insurances[s_insuranceIndexs[i]];
-          uint minPriceToCover = (expiredInsurance.currentPrice * (100 - expiredInsurance.percentageCoverage)) / 100;
-          if (s_lastPrice < minPriceToCover) {
-            uint amountToPayUSD = minPriceToCover - s_lastPrice;
-            balanceOf[expiredInsurance.insuredUser] = ((amountToPayUSD * 10 ** 8) / s_lastPrice) * 10 ** 10;
-          }
-          s_insurances[s_insuranceIndexs[i]].finished = true;
-          delete (s_insuranceIndexs[i]);
-        }
-      } else if (beggining == true) {
-        s_insuranceIndexStart = i;
-      }
+  function fulfillRequest(bytes32 requestId, bytes memory response, bytes memory err) internal override {
+    latestResponse = response;
+    latestError = err;
+    if (lastRequestType == RequestType.PricePrediction) {
+      (highPrice, lowPrice, closePrice) = abi.decode(response, (uint256, uint256, uint256));
+    } else if (lastRequestType == RequestType.Risk) {
+      (highRisk, lowRisk, closeRisk) = abi.decode(response, (uint256, uint256, uint256));
     }
   }
 
-  function withdrawInsuredFunds() public checkFunds(msg.sender) nonReentrant {
-    (bool success, ) = msg.sender.call{value: balanceOf[msg.sender]}("");
-    require(success, "Transaction failed");
-    balanceOf[msg.sender] = 0;
+  function fetchPricePredict() private returns (uint256, uint256, uint256) {
+    Functions.Request memory req;
+    req = priceRequest;
+    bytes32 assignedReqID = sendRequest(req, _subscriptionId, _gasLimit);
+    lastRequestType = RequestType.PricePrediction;
+    latestRequestId = assignedReqID;
+    return (highPrice, lowPrice, closePrice);
   }
 
-  function setPrice(uint _newPrice) public {
-    s_lastPrice = _newPrice;
-  }
-
-  function getLatestPrice() public {
-    (, int price, , , ) = priceFeed.latestRoundData();
-    price = price / int(10 ** decimals);
-    uint roundedPrice = uint(price);
-    s_lastPrice = roundedPrice;
-  }
-
-  function getBalance() public view returns (uint) {
-    return address(this).balance;
+  // function to request risk stored in the api server.
+  // It returns the price predict from the current date. Data has 15 decimals
+  function fetchRisk() private returns (uint256, uint256, uint256) {
+    Functions.Request memory req;
+    req = riskRequest;
+    bytes32 assignedReqID = sendRequest(req, _subscriptionId, _gasLimit);
+    lastRequestType = RequestType.Risk;
+    latestRequestId = assignedReqID;
+    return (highRisk, lowRisk, closeRisk);
   }
 }

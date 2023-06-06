@@ -1,5 +1,5 @@
 const { types } = require("hardhat/config")
-const { networks } = require("../../networks")
+const { networks } = require("../../network-config")
 const { addClientConsumerToSubscription } = require("../Functions-billing/add")
 const { setAutoRequest } = require("./setAutoRequest")
 

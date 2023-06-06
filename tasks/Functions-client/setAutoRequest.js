@@ -1,5 +1,5 @@
 const { types } = require("hardhat/config")
-const { networks } = require("../../networks")
+const { networks } = require("../../network-config")
 const { getRequestConfig } = require("../../FunctionsSandboxLibrary")
 const { generateRequest } = require("./buildRequestJSON")
 const { RequestStore } = require("../utils/artifact")

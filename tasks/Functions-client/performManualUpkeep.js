@@ -1,4 +1,4 @@
-const { networks } = require("../../networks")
+const { networks } = require("../../network-config")
 
 task("functions-perform-upkeep", "Manually call performUpkeep in an Automation compatible contract")
   .addParam("contract", "Address of the contract to call")
