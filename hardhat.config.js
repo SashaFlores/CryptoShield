@@ -1,5 +1,5 @@
-require("@chainlink/env-enc").config()
 require("dotenv").config()
+require("@chainlink/env-enc").config()
 require("@nomicfoundation/hardhat-toolbox")
 require("hardhat-contract-sizer")
 require("@openzeppelin/hardhat-upgrades")
@@ -46,15 +46,6 @@ module.exports = {
     compilers: [
       {
         version: "0.8.7",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 1_000,
-          },
-        },
-      },
-      {
-        version: "0.7.0",
         settings: {
           optimizer: {
             enabled: true,
@@ -139,7 +130,7 @@ module.exports = {
       mainnet: false,
     },
     sepolia: {
-      url: process.env.SEPOLIA_RPC_URL || "UNSET",
+      url: SEPOLIA_RPC_URL || "UNSET",
       chainId: 11155111,
       accounts:
         process.env.PRIVATE_KEY && process.env.SECOND_PRIVATE_KEY
@@ -152,12 +143,11 @@ module.exports = {
     },
   },
   etherscan: {
-    // yarn hardhat verify --network <NETWORK> <CONTRACT_ADDRESS> <CONSTRUCTOR_PARAMETERS>
     apiKey: {
       mainnet: ETHERSCAN_API_KEY,
-      // polygon: POLYGONSCAN_API_KEY,
+      polygon: POLYGONSCAN_API_KEY,
       sepolia: ETHERSCAN_API_KEY,
-      // polygonMumbai: POLYGONSCAN_API_KEY,
+      polygonMumbai: POLYGONSCAN_API_KEY,
     },
   },
   gasReporter: {

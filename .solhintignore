@@ -1,4 +1,2 @@
 node_modules
-deploy
-scripts
-test
+contracts/test

@@ -1,5 +1,5 @@
 const { types } = require("hardhat/config")
-const { networks } = require("../../network-config")
+const { VERIFICATION_BLOCK_CONFIRMATIONS, networkConfig } = require("../../network-config")
 const { addClientConsumerToSubscription } = require("../Functions-billing/add")
 const { setAutoRequest } = require("./setAutoRequest")
 
@@ -19,12 +19,6 @@ task("functions-deploy-auto-client", "Deploys the AutomatedFunctionsConsumer con
     true,
     types.boolean
   )
-  .addOptionalParam(
-    "configpath",
-    "Path to Functions request config file",
-    `${__dirname}/../../Functions-request-config.js`,
-    types.string
-  )
   .setAction(async (taskArgs) => {
     if (network.name === "hardhat") {
       throw Error(
@@ -43,7 +37,7 @@ task("functions-deploy-auto-client", "Deploys the AutomatedFunctionsConsumer con
 
     const autoClientContractFactory = await ethers.getContractFactory("AutomatedFunctionsConsumer")
     const autoClientContract = await autoClientContractFactory.deploy(
-      networks[network.name]["functionsOracleProxy"],
+      networkConfig[network.name]["functionsOracleProxy"],
       taskArgs.subid,
       taskArgs.gaslimit,
       taskArgs.interval
@@ -60,14 +54,14 @@ task("functions-deploy-auto-client", "Deploys the AutomatedFunctionsConsumer con
 
     const verifyContract = taskArgs.verify
 
-    if (verifyContract && !!networks[network.name].verifyApiKey && networks[network.name].verifyApiKey !== "UNSET") {
+    if (verifyContract && (process.env.POLYGONSCAN_API_KEY || process.env.ETHERSCAN_API_KEY)) {
       try {
         console.log("\nVerifying contract...")
-        await autoClientContract.deployTransaction.wait(Math.max(6 - networks[network.name].confirmations, 0))
+        await autoClientContract.deployTransaction.wait(Math.max(6 - VERIFICATION_BLOCK_CONFIRMATIONS, 0))
         await run("verify:verify", {
           address: autoClientContract.address,
           constructorArguments: [
-            networks[network.name]["functionsOracleProxy"],
+            networkConfig[network.name]["functionsOracleProxy"],
             taskArgs.subid,
             taskArgs.gaslimit,
             taskArgs.interval,
@@ -83,9 +77,7 @@ task("functions-deploy-auto-client", "Deploys the AutomatedFunctionsConsumer con
         }
       }
     } else if (verifyContract) {
-      console.log(
-        "\nPOLYGONSCAN_API_KEY, ETHERSCAN_API_KEY or SNOWTRACE_API_KEY is missing. Skipping contract verification..."
-      )
+      console.log("\nPOLYGONSCAN_API_KEY or ETHERSCAN_API_KEY missing. Skipping contract verification...")
     }
 
     console.log(`\nAutomatedFunctionsConsumer contract deployed to ${autoClientContract.address} on ${network.name}`)

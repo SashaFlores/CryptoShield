@@ -1,11 +1,9 @@
 const { types } = require("hardhat/config")
-const { networks } = require("../../network-config")
+const { VERIFICATION_BLOCK_CONFIRMATIONS } = require("../../network-config")
 const { getRequestConfig } = require("../../FunctionsSandboxLibrary")
 const { generateRequest } = require("./buildRequestJSON")
 const { RequestStore } = require("../utils/artifact")
 const { deleteGist } = require("../utils/github")
-const path = require("path")
-const process = require("process")
 
 task("functions-set-auto-request", "Updates the Functions request in a deployed AutomatedFunctionsConsumer contract")
   .addParam("contract", "Address of the client contract")
@@ -22,12 +20,6 @@ task("functions-set-auto-request", "Updates the Functions request in a deployed 
     "Flag indicating if simulation should be run before making an on-chain request",
     true,
     types.boolean
-  )
-  .addOptionalParam(
-    "configpath",
-    "Path to Functions request config file",
-    `${__dirname}/../../Functions-request-config.js`,
-    types.string
   )
   .setAction(async (taskArgs) => {
     if (network.name === "hardhat") {
@@ -49,9 +41,7 @@ const setAutoRequest = async (contract, taskArgs) => {
   const autoClientContractFactory = await ethers.getContractFactory("AutomatedFunctionsConsumer")
   const autoClientContract = await autoClientContractFactory.attach(contract)
 
-  const unvalidatedRequestConfig = require(path.isAbsolute(taskArgs.configpath)
-    ? taskArgs.configpath
-    : path.join(process.cwd(), taskArgs.configpath))
+  const unvalidatedRequestConfig = require("../../Functions-request-config.js")
   const requestConfig = getRequestConfig(unvalidatedRequestConfig)
 
   // doGistCleanup indicates if an encrypted secrets Gist was created automatically and should be cleaned up by the user after use
@@ -88,9 +78,9 @@ const setAutoRequest = async (contract, taskArgs) => {
   )
 
   console.log(
-    `\nWaiting ${networks[network.name].confirmations} block for transaction ${setRequestTx.hash} to be confirmed...`
+    `\nWaiting ${VERIFICATION_BLOCK_CONFIRMATIONS} block for transaction ${setRequestTx.hash} to be confirmed...`
   )
-  await setRequestTx.wait(networks[network.name].confirmations)
+  await setRequestTx.wait(VERIFICATION_BLOCK_CONFIRMATIONS)
 
   const create = await store.upsert(taskArgs.contract, {
     type: "automatedConsumer",

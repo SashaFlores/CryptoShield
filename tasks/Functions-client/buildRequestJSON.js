@@ -1,12 +1,10 @@
 const { simulateRequest, buildRequest, getRequestConfig } = require("../../FunctionsSandboxLibrary")
 const { generateOffchainSecrets } = require("../utils/generateOffchainSecrets")
-const { networks } = require("../../network-config")
+const { networkConfig } = require("../../network-config")
 const utils = require("../utils")
 const axios = require("axios")
 const fs = require("fs")
 const { createGist } = require("../utils/github")
-const path = require("path")
-const process = require("process")
 
 task("functions-build-request", "Creates a JSON file with Functions request parameters")
   .addOptionalParam("output", "Output file name (defaults to Functions-request.json)")
@@ -16,12 +14,6 @@ task("functions-build-request", "Creates a JSON file with Functions request para
     true,
     types.boolean
   )
-  .addOptionalParam(
-    "configpath",
-    "Path to Functions request config file",
-    `${__dirname}/../../Functions-request-config.js`,
-    types.string
-  )
   .setAction(async (taskArgs, hre) => {
     if (network.name === "hardhat") {
       throw Error(
@@ -29,9 +21,7 @@ task("functions-build-request", "Creates a JSON file with Functions request para
       )
     }
 
-    const unvalidatedRequestConfig = require(path.isAbsolute(taskArgs.configpath)
-      ? taskArgs.configpath
-      : path.join(process.cwd(), taskArgs.configpath))
+    const unvalidatedRequestConfig = require("../../Functions-request-config.js")
     const requestConfig = getRequestConfig(unvalidatedRequestConfig)
 
     const request = await generateRequest(requestConfig, taskArgs)
@@ -101,7 +91,7 @@ const generateRequest = async (requestConfig, taskArgs) => {
   }
 
   const OracleFactory = await ethers.getContractFactory("contracts/dev/functions/FunctionsOracle.sol:FunctionsOracle")
-  const oracle = await OracleFactory.attach(networks[network.name]["functionsOracleProxy"])
+  const oracle = await OracleFactory.attach(networkConfig[network.name]["functionsOracleProxy"])
   const [nodeAddresses, perNodePublicKeys] = await oracle.getAllNodePublicKeys()
   const DONPublicKey = await oracle.getDONPublicKey()
 

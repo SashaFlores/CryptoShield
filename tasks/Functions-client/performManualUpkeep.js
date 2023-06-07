@@ -1,4 +1,4 @@
-const { networks } = require("../../network-config")
+const { VERIFICATION_BLOCK_CONFIRMATIONS } = require("../../network-config")
 
 task("functions-perform-upkeep", "Manually call performUpkeep in an Automation compatible contract")
   .addParam("contract", "Address of the contract to call")
@@ -10,7 +10,6 @@ task("functions-perform-upkeep", "Manually call performUpkeep in an Automation c
     // A manual gas limit is required as the gas limit estimated by Ethers is not always accurate
     const overrides = {
       gasLimit: 1000000,
-      gasPrice: networks[network.name].gasPrice,
     }
 
     if (network.name === "hardhat") {
@@ -32,9 +31,9 @@ task("functions-perform-upkeep", "Manually call performUpkeep in an Automation c
     const checkUpkeep = await autoClientContract.performUpkeep(performData, overrides)
 
     console.log(
-      `Waiting ${networks[network.name].confirmations} blocks for transaction ${checkUpkeep.hash} to be confirmed...`
+      `Waiting ${VERIFICATION_BLOCK_CONFIRMATIONS} blocks for transaction ${checkUpkeep.hash} to be confirmed...`
     )
-    await checkUpkeep.wait(networks[network.name].confirmations)
+    await checkUpkeep.wait(VERIFICATION_BLOCK_CONFIRMATIONS)
 
     console.log(`\nSuccessfully called performUpkeep`)
   })

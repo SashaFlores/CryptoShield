@@ -8,16 +8,12 @@ task("functions-deploy-crypto", "Deploys the CryptoShield contract")
       throw Error("This command cannot be used on a local hardhat chain.")
     }
 
-    console.log(`Deploying CryptoShield contract to ${network.name}`)
+    console.log(`Deploying CryptoShield Contract to ${network.name}`)
 
     const oracleAddress = networkConfig[network.name]["functionsOracleProxy"]
-
-    console.log("\n__Compiling Contracts__")
-    await run("compile")
-
     const accounts = await ethers.getSigners()
 
-    // Deploy RecordLabel
+    // Deploy CryptoShield
     const clientContractFactory = await ethers.getContractFactory("CryptoShield")
     const clientContract = await clientContractFactory.deploy(oracleAddress)
 
@@ -26,7 +22,7 @@ task("functions-deploy-crypto", "Deploys the CryptoShield contract")
     )
     await clientContract.deployTransaction.wait(VERIFICATION_BLOCK_CONFIRMATIONS)
 
-    // Verify the RecordLabel Contract
+    // Verify the CryptoShield Contract
     const verifyContract = taskArgs.verify
 
     if (verifyContract && (process.env.POLYGONSCAN_API_KEY || process.env.ETHERSCAN_API_KEY)) {
@@ -35,9 +31,9 @@ task("functions-deploy-crypto", "Deploys the CryptoShield contract")
         await clientContract.deployTransaction.wait(Math.max(6 - VERIFICATION_BLOCK_CONFIRMATIONS, 0))
         await run("verify:verify", {
           address: clientContract.address,
-          constructorArguments: [oracleAddress],
+          constructorArguments: [oracleAddress, stcAddress],
         })
-        console.log("CryptoShield verified")
+        console.log("RecordLabel verified")
       } catch (error) {
         if (!error.message.includes("Already Verified")) {
           console.log("Error verifying contract.  Try delete the ./build folder and try again.")
