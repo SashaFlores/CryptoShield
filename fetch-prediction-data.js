@@ -23,17 +23,17 @@ const MLmodelData = Functions.makeHttpRequest({
 })
 const [MLResponse] = await Promise.all([MLmodelData])
 const result = MLResponse
-const HighPricePredict = result.data.predictedPriceHigh * 10 ** 10
-const LowPricePredict = result.data.predictedPriceLow * 10 ** 10
-const ClosePricePredict = result.data.predictedPriceClose * 10 ** 10
+const HighPrice = result.data.predictedPriceHigh * 10 ** 10
+const LowPrice = result.data.predictedPriceLow * 10 ** 10
+const ClosePrice = result.data.predictedPriceClose * 10 ** 10
 const HighRisk = result.data.riskHigh * 10 ** 10
 const LowRisk = result.data.riskLow * 10 ** 10
 const CloseRisk = result.data.riskClose * 10 ** 10
 
 return Buffer.concat([
-  Functions.encodeUint256(HighPricePredict),
-  Functions.encodeUint256(LowPricePredict),
-  Functions.encodeUint256(ClosePricePredict),
+  Functions.encodeUint256(HighPrice),
+  Functions.encodeUint256(LowPrice),
+  Functions.encodeUint256(ClosePrice),
   Functions.encodeUint256(HighRisk),
   Functions.encodeUint256(LowRisk),
   Functions.encodeUint256(CloseRisk),

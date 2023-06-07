@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.10;
 
+import "./Insured.sol";
 import "../dev/functions/FunctionsClient.sol";
 import "@chainlink/contracts/src/v0.8/ConfirmedOwner.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@chainlink/contracts/src/v0.8/AutomationCompatible.sol";
 
-contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleInterface, ReentrancyGuard {
+contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleInterface, Insured {
   using Functions for Functions.Request;
 
   /**
@@ -33,9 +34,9 @@ contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleIn
     uint256 highPrice;
     uint256 lowPrice;
     uint256 closePrice;
-    uint256 highRisk;
-    uint256 lowRisk;
-    uint256 closeRisk;
+    uint8 highRisk;
+    uint8 lowRisk;
+    uint8 closeRisk;
   }
 
   DailyData private dailyData;
@@ -44,6 +45,13 @@ contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleIn
 
   constructor(address oracle) FunctionsClient(oracle) ConfirmedOwner(msg.sender) {
     priceFeedETH = AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306);
+  }
+
+  /**
+   * receive function to accept ETH.
+   */
+  receive() external payable {
+    emit FundsReceived(msg.sender, msg.value, address(this).balance);
   }
 
   /**
@@ -94,7 +102,11 @@ contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleIn
     return assignedReqID;
   }
 
-  function getLatestPriceETH() public view returns (int256) {
+  function getQuote(uint256 amount) public returns (uint256) {}
+
+  function selectPolicy(uint256 risk) public {}
+
+  function getLatestPrice() public view virtual returns (int256) {
     (, int price, , , ) = priceFeedETH.latestRoundData();
     return price;
   }
@@ -108,7 +120,7 @@ contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleIn
       dailyData.highRisk,
       dailyData.lowRisk,
       dailyData.closeRisk
-    ) = abi.decode(response, (uint256, uint256, uint256, uint256, uint256, uint256));
+    ) = abi.decode(response, (uint256, uint256, uint256, uint8, uint8, uint8));
 
     emit OCRResponse(requestId, response, err);
   }
