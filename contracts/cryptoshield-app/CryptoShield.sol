@@ -34,14 +34,15 @@ contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleIn
     uint256 highPrice;
     uint256 lowPrice;
     uint256 closePrice;
-    uint8 highRisk;
-    uint8 lowRisk;
-    uint8 closeRisk;
+    uint16 highRisk;
+    uint16 lowRisk;
+    uint16 closeRisk;
   }
 
   DailyData private dailyData;
 
   event OCRResponse(bytes32 indexed requestId, bytes result, bytes err);
+  event PremiumReceived(address sender, uint256 premium);
 
   constructor(address oracle) FunctionsClient(oracle) ConfirmedOwner(msg.sender) {
     priceFeedETH = AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306);
@@ -102,9 +103,67 @@ contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleIn
     return assignedReqID;
   }
 
-  function getQuote(uint256 amount) public returns (uint256) {}
+  function getQuote(uint256 amount) public returns (uint16, uint16, uint16, uint256, uint256, uint256) {
+    int256 currentPriceInt = getLatestPrice();
+    uint256 currentPrice = currentPriceInt >= 0 ? uint256(currentPriceInt) : 0;
 
-  function selectPolicy(uint256 risk) public {}
+    if (currentPrice > dailyData.highPrice) {
+      uint256 priceDifference = currentPrice - dailyData.highPrice;
+
+      // Update the risk values
+      dailyData.highRisk += uint16(priceDifference);
+      dailyData.lowRisk += uint16(priceDifference);
+      dailyData.closeRisk += uint16(priceDifference);
+
+      uint256 premiumHighRisk = _estimatePremium(amount, dailyData.highRisk);
+      uint256 premiumLowRisk = _estimatePremium(amount, dailyData.lowRisk);
+      uint256 premiumCloseRisk = _estimatePremium(amount, dailyData.closeRisk);
+
+      return (
+        dailyData.highRisk,
+        dailyData.lowRisk,
+        dailyData.closeRisk,
+        premiumHighRisk,
+        premiumLowRisk,
+        premiumCloseRisk
+      );
+    } else {
+      uint256 premiumHighRisk = _estimatePremium(amount, dailyData.highRisk);
+      uint256 premiumLowRisk = _estimatePremium(amount, dailyData.lowRisk);
+      uint256 premiumCloseRisk = _estimatePremium(amount, dailyData.closeRisk);
+      return (
+        dailyData.highRisk,
+        dailyData.lowRisk,
+        dailyData.closeRisk,
+        premiumHighRisk,
+        premiumLowRisk,
+        premiumCloseRisk
+      );
+    }
+  }
+
+  function selectPolicy(uint16 risk) public payable virtual {
+    require(
+      risk == dailyData.highRisk || risk == dailyData.lowRisk || risk == dailyData.closeRisk,
+      "CryptoShield: risk selected out of range"
+    );
+
+    uint256 amount = msg.value; // Amount to be insured
+    uint256 premium = _estimatePremium(amount, risk); // Calculate the premium based on amount and risk
+    require(msg.value >= amount + premium, "CryptoShield: insufficient premium & insured amount");
+
+    // Separate the payments
+    uint256 insuranceAmount = amount;
+    uint256 premiumAmount = premium;
+    // Make the first payment for the insured amount
+    _startPolicy(msg.sender, insuranceAmount, premium, risk);
+
+    // Make the second payment for the premium amount
+    (bool success, ) = (address(this)).call{value: premiumAmount}("");
+    require(success, "Insured: withdrawal failed");
+
+    emit PremiumReceived(msg.sender, premiumAmount);
+  }
 
   function getLatestPrice() public view virtual returns (int256) {
     (, int price, , , ) = priceFeedETH.latestRoundData();
@@ -120,9 +179,15 @@ contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleIn
       dailyData.highRisk,
       dailyData.lowRisk,
       dailyData.closeRisk
-    ) = abi.decode(response, (uint256, uint256, uint256, uint8, uint8, uint8));
+    ) = abi.decode(response, (uint256, uint256, uint256, uint16, uint16, uint16));
 
     emit OCRResponse(requestId, response, err);
+  }
+
+  function _estimatePremium(uint256 amount, uint16 selectedRisk) private pure returns (uint256) {
+    // Calculate the premium based on the amount and selected risk
+    uint256 premium = (amount * uint256(selectedRisk)) / 100;
+    return premium;
   }
 
   function updateOracleAddress(address oracle) public onlyOwner {

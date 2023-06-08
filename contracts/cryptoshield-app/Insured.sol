@@ -39,6 +39,7 @@ contract Insured is ReentrancyGuard {
     uint256 from;
     uint16 coverage;
     uint256 price;
+    uint256 premium;
   }
 
   /**
@@ -62,6 +63,58 @@ contract Insured is ReentrancyGuard {
   event PolicyStarted(address indexed insured, uint256 amount, uint256 index, uint256 startDate);
   event Withdrawal(address indexed insured, uint256 amount, uint256 timestamp);
   event FundsReceived(address indexed sender, uint256 amount, uint256 balance);
+
+  /**
+   * @dev this is a simple logic for the sake of the hackathon
+   * @param policyIndex uint256: polic index
+   */
+  function withdraw(uint256 policyIndex) external payable nonReentrant {
+    PolicyHolder memory policyHolder = policyHolders[holders[msg.sender]];
+    require(policyIndex < policyHolder.userPolicies.length, "Insured: invalid policy index");
+
+    Policy memory policy = policyHolder.userPolicies[policyIndex];
+    require(policy.insured == msg.sender, "Insured: invalid policy owner");
+
+    uint256 amount = policy.amount;
+    uint256 initialPrice = policy.price;
+    int256 currentPriceInt = getCurrentPrice();
+    uint256 currentPrice = currentPriceInt >= 0 ? uint256(currentPriceInt) : 0;
+
+    if (initialPrice < currentPrice) {
+      uint256 priceDifference = currentPrice - initialPrice;
+      // Calculate price difference as a percentage
+      uint16 priceDifferencePercentage = uint16((priceDifference * 100) / initialPrice);
+      // Convert policy coverage to a percentage
+      uint16 coveragePercentage = policy.coverage;
+
+      if (priceDifferencePercentage > coveragePercentage) {
+        // Calculate the loss based on the coverage percentage
+        uint256 loss = (amount * coveragePercentage) / 100;
+        amount = amount + loss;
+      } else {
+        // Calculate the actual loss based on the price difference percentage
+        uint256 loss = (amount * priceDifferencePercentage) / 100;
+        amount = amount + loss;
+      }
+    }
+
+    // Remove the policy from the userPolicies array
+    Policy[] memory userPolicies = new Policy[](policyHolder.userPolicies.length - 1);
+    uint256 index = 0;
+    for (uint256 i = 0; i < policyHolder.userPolicies.length; i++) {
+      if (i != policyIndex) {
+        userPolicies[index] = policyHolder.userPolicies[i];
+        index++;
+      }
+    }
+    // Update the userPolicies array in the policyHolder struct
+    policyHolder.userPolicies = userPolicies;
+
+    (bool success, ) = payable(msg.sender).call{value: amount}("");
+    require(success, "Insured: withdrawal failed");
+
+    emit Withdrawal(msg.sender, amount, block.timestamp);
+  }
 
   /**
    * @dev function to check if address is insured, returns summary of policies
@@ -91,7 +144,12 @@ contract Insured is ReentrancyGuard {
    * @param amount uint256: amount to be insured
    * @param risk uint256: level of risk coverage aganist fluctations
    */
-  function _startPolicy(address user, uint256 amount, uint8 risk) internal virtual nonReentrant returns (uint256) {
+  function _startPolicy(
+    address user,
+    uint256 amount,
+    uint256 premium,
+    uint16 risk
+  ) internal virtual nonReentrant returns (uint256) {
     require(amount >= 1 ether, "Insured: min insured amount is 1 ETH");
     require(user != address(0), "Insured: unauthorized zero address");
     uint256 index = holders[user];
@@ -105,41 +163,11 @@ contract Insured is ReentrancyGuard {
     int256 currentPrice = getCurrentPrice();
     uint256 price = currentPrice >= 0 ? uint256(currentPrice) : 0;
 
-    policyHolders[index].userPolicies.push(Policy(user, amount, block.timestamp, risk, price));
+    policyHolders[index].userPolicies.push(Policy(user, amount, block.timestamp, risk, price, premium));
 
     emit PolicyStarted(user, amount, index, block.timestamp);
 
     return index;
-  }
-
-  /**
-   * @dev this is a simple logic for the sake of the hackathon
-   * @param policyIndex uint256: polic index
-   */
-  function withdraw(uint256 policyIndex) external payable nonReentrant {
-    PolicyHolder memory policyHolder = policyHolders[holders[msg.sender]];
-    require(policyIndex < policyHolder.userPolicies.length, "Insured: invalid policy index");
-
-    Policy memory policy = policyHolder.userPolicies[policyIndex];
-    require(policy.insured == msg.sender, "Insured: invalid policy owner");
-
-    uint256 amount = policy.amount;
-    uint256 initalPrice = policy.price;
-    int256 currentPriceInt = getCurrentPrice();
-    uint256 currentPrice = currentPriceInt >= 0 ? uint256(currentPriceInt) : 0;
-
-    if (initalPrice < currentPrice) {
-      uint16 risk = policy.coverage * 10000;
-      uint256 loss = (amount * risk) / 10000;
-      amount = amount + loss;
-    }
-
-    (bool success, ) = payable(msg.sender).call{value: amount}("");
-    require(success, "Insured: withdrawal failed");
-
-    policy.amount = 0;
-
-    emit Withdrawal(msg.sender, amount, block.timestamp);
   }
 
   function getCurrentPrice() private view returns (int256) {
