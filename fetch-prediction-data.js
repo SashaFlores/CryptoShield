@@ -34,7 +34,7 @@ return Buffer.concat([
   Functions.encodeUint256(HighPrice),
   Functions.encodeUint256(LowPrice),
   Functions.encodeUint256(ClosePrice),
-  Functions.encodeUint16(HighRisk),
-  Functions.encodeUint16(LowRisk),
-  Functions.encodeUint16(CloseRisk),
+  Functions.encodeUint256(HighRisk),
+  Functions.encodeUint256(LowRisk),
+  Functions.encodeUint256(CloseRisk),
 ])

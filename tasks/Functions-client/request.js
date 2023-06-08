@@ -43,7 +43,7 @@ task("functions-request", "Initiates a request from a Functions client contract"
     }
 
     // Attach to the required contracts
-    const clientContractFactory = await ethers.getContractFactory("RecordLabel")
+    const clientContractFactory = await ethers.getContractFactory("CryptoShield")
     const clientContract = clientContractFactory.attach(contractAddr)
     const OracleFactory = await ethers.getContractFactory("contracts/dev/functions/FunctionsOracle.sol:FunctionsOracle")
     const oracle = await OracleFactory.attach(networkConfig[network.name]["functionsOracleProxy"])
@@ -240,7 +240,7 @@ task("functions-request", "Initiates a request from a Functions client contract"
       )
 
       // Initiate the on-chain request after all listeners are initialized
-      console.log(`\nRequesting new data for RecordLabel contract ${contractAddr} on network ${network.name}`)
+      console.log(`\nRequesting new data for CryptoShield contract ${contractAddr} on network ${network.name}`)
       const requestTx = await clientContract.executeRequest(
         request.source,
         request.secrets ?? [],

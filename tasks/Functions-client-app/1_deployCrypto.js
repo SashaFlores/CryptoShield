@@ -31,9 +31,9 @@ task("functions-deploy-crypto", "Deploys the CryptoShield contract")
         await clientContract.deployTransaction.wait(Math.max(6 - VERIFICATION_BLOCK_CONFIRMATIONS, 0))
         await run("verify:verify", {
           address: clientContract.address,
-          constructorArguments: [oracleAddress, stcAddress],
+          constructorArguments: [oracleAddress],
         })
-        console.log("RecordLabel verified")
+        console.log("CryptoShield verified")
       } catch (error) {
         if (!error.message.includes("Already Verified")) {
           console.log("Error verifying contract.  Try delete the ./build folder and try again.")

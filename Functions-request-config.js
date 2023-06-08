@@ -30,7 +30,7 @@ const requestConfig = {
   codeLanguage: CodeLanguage.JavaScript,
   // String containing the source code to be executed
   //source: fs.readFileSync("./prove.js").toString(),
-  source: fs.readFileSync("./fetch-price-predict.js").toString(),
+  source: fs.readFileSync("./fetch-prediction-data.js").toString(),
   // source: fs.readFileSync("./fetch-risk.js").toString(),
   // Secrets can be accessed within the source code with `secrets.varName` (ie: secrets.apiKey). The secrets object can only contain string values.
   //secrets: { apiKey: process.env.COINMARKETCAP_API_KEY ?? "" },

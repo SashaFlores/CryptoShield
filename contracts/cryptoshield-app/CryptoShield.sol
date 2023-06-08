@@ -27,6 +27,8 @@ contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleIn
   uint64 private constant _subscriptionId = 387;
   uint32 private constant _gasLimit = 300000;
 
+  Functions.Request public s_request;
+
   /**
    * @dev the daily data returned by API
    */
@@ -82,6 +84,7 @@ contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleIn
    */
   function fetchData() public {
     Functions.Request memory req;
+    req = s_request;
     sendRequest(req, _subscriptionId, _gasLimit);
   }
 
@@ -94,6 +97,7 @@ contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleIn
   ) public onlyOwner returns (bytes32) {
     Functions.Request memory req;
     req.initializeRequest(Functions.Location.Inline, Functions.CodeLanguage.JavaScript, source);
+    req = s_request;
     if (secrets.length > 0) {
       req.addRemoteSecrets(secrets);
     }
@@ -172,15 +176,17 @@ contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleIn
 
   // callback function called by the chainlink nodes once they have fetched the information requested.
   function fulfillRequest(bytes32 requestId, bytes memory response, bytes memory err) internal override {
-    (
-      dailyData.highPrice,
-      dailyData.lowPrice,
-      dailyData.closePrice,
-      dailyData.highRisk,
-      dailyData.lowRisk,
-      dailyData.closeRisk
-    ) = abi.decode(response, (uint256, uint256, uint256, uint16, uint16, uint16));
+    uint256 highRisk;
+    uint256 lowRisk;
+    uint256 closeRisk;
+    (dailyData.highPrice, dailyData.lowPrice, dailyData.closePrice, highRisk, lowRisk, closeRisk) = abi.decode(
+      response,
+      (uint256, uint256, uint256, uint256, uint256, uint256)
+    );
 
+    dailyData.highRisk = uint16(highRisk);
+    dailyData.lowRisk = uint16(lowRisk);
+    dailyData.closeRisk = uint16(closeRisk);
     emit OCRResponse(requestId, response, err);
   }
 
