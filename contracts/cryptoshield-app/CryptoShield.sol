@@ -36,9 +36,9 @@ contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleIn
     uint256 highPrice;
     uint256 lowPrice;
     uint256 closePrice;
-    uint16 highRisk;
-    uint16 lowRisk;
-    uint16 closeRisk;
+    uint256 highRisk;
+    uint256 lowRisk;
+    uint256 closeRisk;
   }
 
   DailyData private dailyData;
@@ -107,7 +107,7 @@ contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleIn
     return assignedReqID;
   }
 
-  function getQuote(uint256 amount) public returns (uint16, uint16, uint16, uint256, uint256, uint256) {
+  function getQuote(uint256 amount) public returns (uint256, uint256, uint256, uint256, uint256, uint256) {
     int256 currentPriceInt = getLatestPrice();
     uint256 currentPrice = currentPriceInt >= 0 ? uint256(currentPriceInt) : 0;
 
@@ -115,9 +115,9 @@ contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleIn
       uint256 priceDifference = currentPrice - dailyData.highPrice;
 
       // Update the risk values
-      dailyData.highRisk += uint16(priceDifference);
-      dailyData.lowRisk += uint16(priceDifference);
-      dailyData.closeRisk += uint16(priceDifference);
+      dailyData.highRisk += priceDifference;
+      dailyData.lowRisk += priceDifference;
+      dailyData.closeRisk += priceDifference;
 
       uint256 premiumHighRisk = _estimatePremium(amount, dailyData.highRisk);
       uint256 premiumLowRisk = _estimatePremium(amount, dailyData.lowRisk);
@@ -146,7 +146,7 @@ contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleIn
     }
   }
 
-  function selectPolicy(uint16 risk) public payable virtual {
+  function selectPolicy(uint256 risk) public payable virtual {
     require(
       risk == dailyData.highRisk || risk == dailyData.lowRisk || risk == dailyData.closeRisk,
       "CryptoShield: risk selected out of range"
@@ -176,21 +176,19 @@ contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleIn
 
   // callback function called by the chainlink nodes once they have fetched the information requested.
   function fulfillRequest(bytes32 requestId, bytes memory response, bytes memory err) internal override {
-    uint256 highRisk;
-    uint256 lowRisk;
-    uint256 closeRisk;
-    (dailyData.highPrice, dailyData.lowPrice, dailyData.closePrice, highRisk, lowRisk, closeRisk) = abi.decode(
-      response,
-      (uint256, uint256, uint256, uint256, uint256, uint256)
-    );
+    (
+      dailyData.highPrice,
+      dailyData.lowPrice,
+      dailyData.closePrice,
+      dailyData.highRisk,
+      dailyData.lowRisk,
+      dailyData.closeRisk
+    ) = abi.decode(response, (uint256, uint256, uint256, uint256, uint256, uint256));
 
-    dailyData.highRisk = uint16(highRisk);
-    dailyData.lowRisk = uint16(lowRisk);
-    dailyData.closeRisk = uint16(closeRisk);
     emit OCRResponse(requestId, response, err);
   }
 
-  function _estimatePremium(uint256 amount, uint16 selectedRisk) private pure returns (uint256) {
+  function _estimatePremium(uint256 amount, uint256 selectedRisk) private pure returns (uint256) {
     // Calculate the premium based on the amount and selected risk
     uint256 premium = (amount * uint256(selectedRisk)) / 100;
     return premium;

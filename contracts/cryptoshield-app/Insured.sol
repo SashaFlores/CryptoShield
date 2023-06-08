@@ -37,7 +37,7 @@ contract Insured is ReentrancyGuard {
     address insured;
     uint256 amount;
     uint256 from;
-    uint16 coverage;
+    uint256 coverage;
     uint256 price;
     uint256 premium;
   }
@@ -83,9 +83,9 @@ contract Insured is ReentrancyGuard {
     if (initialPrice < currentPrice) {
       uint256 priceDifference = currentPrice - initialPrice;
       // Calculate price difference as a percentage
-      uint16 priceDifferencePercentage = uint16((priceDifference * 100) / initialPrice);
+      uint256 priceDifferencePercentage = ((priceDifference * 100) / initialPrice);
       // Convert policy coverage to a percentage
-      uint16 coveragePercentage = policy.coverage;
+      uint256 coveragePercentage = policy.coverage;
 
       if (priceDifferencePercentage > coveragePercentage) {
         // Calculate the loss based on the coverage percentage
@@ -148,7 +148,7 @@ contract Insured is ReentrancyGuard {
     address user,
     uint256 amount,
     uint256 premium,
-    uint16 risk
+    uint256 risk
   ) internal virtual nonReentrant returns (uint256) {
     require(amount >= 1 ether, "Insured: min insured amount is 1 ETH");
     require(user != address(0), "Insured: unauthorized zero address");
