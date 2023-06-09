@@ -1,138 +1,181 @@
-require('@nomicfoundation/hardhat-toolbox')
-require('@nomiclabs/hardhat-solhint')
-require('solidity-coverage')
-require("hardhat-gas-reporter")
-require('hardhat-contract-sizer')
-require('solidity-coverage')
-require('@nomiclabs/hardhat-solhint')
+require("dotenv").config()
+require("@chainlink/env-enc").config()
+require("@nomicfoundation/hardhat-toolbox")
+require("hardhat-contract-sizer")
+require("@openzeppelin/hardhat-upgrades")
+require("./tasks")
 
+const npmCommand = process.env.npm_lifecycle_event
+const isTestEnvironment = npmCommand == "test" || npmCommand == "test:unit"
+
+// Set one of the following RPC endpoints (required)
+let MAINNET_RPC_URL = process.env.MAINNET_RPC_URL
+let POLYGON_MAINNET_RPC_URL = process.env.POLYGON_MAINNET_RPC_URL
+let MUMBAI_RPC_URL = process.env.MUMBAI_RPC_URL
+let SEPOLIA_RPC_URL = process.env.SEPOLIA_RPC_URL
+
+// Ensure one of the RPC endpoints has been set
+if (!isTestEnvironment && !MAINNET_RPC_URL && !POLYGON_MAINNET_RPC_URL && !MUMBAI_RPC_URL && !SEPOLIA_RPC_URL) {
+  throw Error(
+    "One of the following environment variables must be set: MAINNET_RPC_URL, SEPOLIA_RPC_URL, POLYGON_MAINNET_RPC_URL, or MUMBAI_RPC_URL"
+  )
+}
+
+// Set EVM private key (required)
+const PRIVATE_KEY = process.env.PRIVATE_KEY
+if (!isTestEnvironment && !PRIVATE_KEY) {
+  throw Error("Set the PRIVATE_KEY environment variable with your EVM wallet private key")
+}
+
+// Set a specific block number to fork (optional)
+const FORKING_BLOCK_NUMBER = isNaN(process.env.FORKING_BLOCK_NUMBER)
+  ? undefined
+  : parseInt(process.env.FORKING_BLOCK_NUMBER)
+
+// Your API key for Etherscan, obtain one at https://etherscan.io/ (optional)
+const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY
+const POLYGONSCAN_API_KEY = process.env.POLYGONSCAN_API_KEY
+
+// Enable gas reporting (optional)
+const REPORT_GAS = process.env.REPORT_GAS?.toLowerCase() === "true" ? true : false
+
+/** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
-  defaultNetwork: 'hardhat',
+  defaultNetwork: "hardhat",
+  solidity: {
+    compilers: [
+      {
+        version: "0.8.10",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 1_000,
+          },
+        },
+      },
+      {
+        version: "0.8.7",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 1_000,
+          },
+        },
+      },
+      {
+        version: "0.6.6",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 1_000,
+          },
+        },
+      },
+      {
+        version: "0.4.24",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 1_000,
+          },
+        },
+      },
+    ],
+  },
   networks: {
     hardhat: {
-      chainId: 31337
-    },
-    localDev: {
-      url: `HTTP://127.0.0.1:8545`,
-      chainId: 1337,
-      saveDeployments: true,
-      tags: ['local', 'test']
+      allowUnlimitedContractSize: true,
+      hardfork: "merge",
+      forking: {
+        url: MAINNET_RPC_URL ?? POLYGON_MAINNET_RPC_URL ?? MUMBAI_RPC_URL ?? SEPOLIA_RPC_URL ?? "",
+        blockNumber: FORKING_BLOCK_NUMBER,
+        enabled: isTestEnvironment === false,
+      },
+      chainId: 31337,
+      accounts:
+        process.env.PRIVATE_KEY && process.env.SECOND_PRIVATE_KEY
+          ? [
+              {
+                privateKey: process.env.PRIVATE_KEY,
+                balance: "10000000000000000000000",
+              },
+              {
+                privateKey: process.env.SECOND_PRIVATE_KEY,
+                balance: "20000000000000000000000",
+              },
+            ]
+          : [],
     },
     mainnet: {
-      url: `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
+      url: MAINNET_RPC_URL ?? "UNSET",
+      accounts: PRIVATE_KEY !== undefined ? [PRIVATE_KEY] : [],
       chainId: 1,
-      accounts: [],
-      blockConfirmations: 5,
-      timeout: 600000,
+      nativeCurrencySymbol: "ETH",
+      nativeCurrencyDecimals: 18,
+      nativePriceFeed: "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419",
+      mainnet: true,
     },
     polygon: {
-      url: `https://polygon-mainnet.infura.io/v3/`, //needs edit
+      url: POLYGON_MAINNET_RPC_URL ?? "UNSET",
       chainId: 137,
-      accounts: [],
-      blockConfirmations: 5,
-      timeout: 600000,
-    },
-    binance: {
-      url: `https://bsc-dataseed.binance.org/`,
-      chainId: 56,
-      accounts: [],
-      blockConfirmations: 5,
-      timeout: 600000,
-    },
-    goerli: { 
-      url: `https://goerli.infura.io/v3/${process.env.INFURA_API_KEY}`,
-      chainId: 5,
-      accounts: [],
-      blockConfirmations: 5,
-      timeout: 600000,
-      saveDeployments: true,
-      live: true,
-      tags: ['staging']
-    },
-    sepolia: {
-      url: `https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`,
-      chainId: 11155111,
-      accounts: [
-        // `0x${process.env.ADMIN_KEY}`, 
-        // `0x${process.env.UPGRADER_KEY}`, 
-        // `0x${process.env.OTHER_KEY}`, 
-        // `0x${process.env.MINTER_KEY}`,
-        // //`0x${process.env.OWNER_KEY}`,
-        // `0x${process.env.MANAGER_KEY}`,
-      ],
-      blockConfirmations: 5,
-      timeout: 600000,
-      saveDeployments: true,
-      live: true,
-      tags: ['staging', 'backToBack']
+      accounts: PRIVATE_KEY !== undefined ? [PRIVATE_KEY] : [],
+      chainId: 137,
+      nativeCurrencySymbol: "MATIC",
+      nativeCurrencyDecimals: 18,
+      nativePriceFeed: "0xab594600376ec9fd91f8e885dadf0ce036862de0",
+      mainnet: true,
     },
     mumbai: {
-      url: `https://polygon-mumbai.infura.io/v3/`,
+      url: MUMBAI_RPC_URL ?? "UNSET",
+      gasPrice: 5_000_000_000,
+      accounts:
+        process.env.PRIVATE_KEY && process.env.SECOND_PRIVATE_KEY
+          ? [process.env.PRIVATE_KEY, process.env.SECOND_PRIVATE_KEY]
+          : [],
       chainId: 80001,
-      accounts: [],
-      blockConfirmations: 5,
-      timeout: 600000,
+      nativeCurrencySymbol: "MATIC",
+      nativeCurrencyDecimals: 18,
+      nativePriceFeed: "0xd0D5e3DB44DE05E9F294BB0a3bEEaF030DE24Ada",
+      mainnet: false,
     },
-    bnbTest: {
-      url: `https://data-seed-prebsc-1-s1.binance.org:8545`,
-      chainId: 97,
-      blockConfirmations: 5,
-      timeout: 600000,
-    }
-  },
-  namedAccounts: {
-    deployer: {
-      default: 0,
-      sepolia: process.env.ADMIN
+    sepolia: {
+      url: SEPOLIA_RPC_URL || "UNSET",
+      chainId: 11155111,
+      accounts:
+        process.env.PRIVATE_KEY && process.env.SECOND_PRIVATE_KEY
+          ? [process.env.PRIVATE_KEY, process.env.SECOND_PRIVATE_KEY]
+          : [],
+      nativeCurrencySymbol: "ETH",
+      nativeCurrencyDecimals: 18,
+      nativePriceFeed: "0x694AA1769357215DE4FAC081bf1f309aDC325306",
+      mainnet: false,
     },
-    manager1: {
-      default: 1,
-      sepolia: process.env.MANAGER1
-    },
-    manager2: {
-      default: 2,
-      sepolia: process.env.MANAGER2
-    },
-    mocker: {
-      default: 3,
-    }
-  },
-  gasReporter: {
-    enabled: true,
-    coinmarketcap: process.env.COINMARKETCAP,
-    outputFile: "gasReporter.txt",
-    noColors: false,
-    currency: "USD", 
-  },
-  solidity: {
-    version: '0.8.10',
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 500,
-      }
-    }
-  },
-  mocha: {
-    timeout: 100000.
-  },
-  paths: {
-    sources: "./contracts",
-    scripts: "./scripts",
-    tests: "./test",
-    artifacts: "./artifacts",
-    cache: "./cache",
-    slither: "./slither"
   },
   etherscan: {
     apiKey: {
-      // mainnet: process.env.ETHER_API,
-      polygon: process.env.POLYGON_API,
-      // binance: process.env.BNB_API,
-      sepolia: process.env.SEPOLIA_API,
-      // goerli: process.env.ETHER_API,
-      mumbai: process.env.POLYGON_API,
-      // bnbTest:  process.env.BNB_API,
+      mainnet: ETHERSCAN_API_KEY,
+      polygon: POLYGONSCAN_API_KEY,
+      sepolia: ETHERSCAN_API_KEY,
+      polygonMumbai: POLYGONSCAN_API_KEY,
     },
   },
-};
+  gasReporter: {
+    enabled: REPORT_GAS,
+    currency: "USD",
+    outputFile: "gas-report.txt",
+    noColors: true,
+  },
+  contractSizer: {
+    runOnCompile: false,
+    only: ["CryptoShield", "AutomatedFunctionsConsumer", "FunctionsBillingRegistry"],
+  },
+  paths: {
+    sources: "./contracts",
+    tests: "./test",
+    cache: "./build/cache",
+    artifacts: "./build/artifacts",
+  },
+  mocha: {
+    timeout: 200000, // 200 seconds max for running tests
+  },
+}
