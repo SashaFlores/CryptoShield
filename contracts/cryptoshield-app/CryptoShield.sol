@@ -111,7 +111,7 @@ contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleIn
     return assignedReqID;
   }
 
-  function getQuote(uint256 amount) public returns (uint256, uint256, uint256, uint256, uint256, uint256) {
+  function getQuote(uint256 amount) public view returns (uint256, uint256, uint256, uint256, uint256, uint256) {
     require(!fetching, "CryptoShield: Daily data is being fetched");
     int256 currentPriceInt = getLatestPrice();
     uint256 currentPrice = currentPriceInt >= 0 ? uint256(currentPriceInt) : 0;
