@@ -23,25 +23,27 @@ contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleIn
   uint private constant INTERVAL = 1 days;
   uint private lastTimeStamp;
 
+  // functions consumer variables
+  bytes32 public latestRequestId;
+  bytes public latestResponse;
+  bytes public latestError;
+
   // subscription state variables
   uint64 private constant _subscriptionId = 387;
   uint32 private constant _gasLimit = 300000;
 
   Functions.Request public s_request;
+  bool public fetching = true;
 
   /**
-   * @dev the daily data returned by API
+   * @dev the daily data returned by API from ML Predictions
    */
-  struct DailyData {
-    uint256 highPrice;
-    uint256 lowPrice;
-    uint256 closePrice;
-    uint256 highRisk;
-    uint256 lowRisk;
-    uint256 closeRisk;
-  }
-
-  DailyData private dailyData;
+  uint256 public highPrice;
+  uint256 public lowPrice;
+  uint256 public closePrice;
+  uint256 public highRisk;
+  uint256 public lowRisk;
+  uint256 public closeRisk;
 
   event OCRResponse(bytes32 indexed requestId, bytes result, bytes err);
   event PremiumReceived(address sender, uint256 premium);
@@ -86,6 +88,7 @@ contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleIn
     Functions.Request memory req;
     req = s_request;
     sendRequest(req, _subscriptionId, _gasLimit);
+    fetching = true;
   }
 
   function executeRequest(
@@ -97,60 +100,44 @@ contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleIn
   ) public onlyOwner returns (bytes32) {
     Functions.Request memory req;
     req.initializeRequest(Functions.Location.Inline, Functions.CodeLanguage.JavaScript, source);
-    req = s_request;
+    s_request = req;
     if (secrets.length > 0) {
       req.addRemoteSecrets(secrets);
     }
     if (args.length > 0) req.addArgs(args);
 
     bytes32 assignedReqID = sendRequest(req, subscriptionId, gasLimit);
+    latestRequestId = assignedReqID;
     return assignedReqID;
   }
 
   function getQuote(uint256 amount) public returns (uint256, uint256, uint256, uint256, uint256, uint256) {
+    require(!fetching, "CryptoShield: Daily data is being fetched");
     int256 currentPriceInt = getLatestPrice();
     uint256 currentPrice = currentPriceInt >= 0 ? uint256(currentPriceInt) : 0;
 
-    if (currentPrice > dailyData.highPrice) {
-      uint256 priceDifference = currentPrice - dailyData.highPrice;
+    if (currentPrice > highPrice) {
+      uint256 priceDifference = (currentPrice * 100) / highPrice - 100; // Calculate percentage difference
+      highPrice = currentPrice;
+
+      // Calculate risk based on the percentage difference
+      uint256 riskChange = (highRisk * priceDifference) / 100;
 
       // Update the risk values
-      dailyData.highRisk += priceDifference;
-      dailyData.lowRisk += priceDifference;
-      dailyData.closeRisk += priceDifference;
-
-      uint256 premiumHighRisk = _estimatePremium(amount, dailyData.highRisk);
-      uint256 premiumLowRisk = _estimatePremium(amount, dailyData.lowRisk);
-      uint256 premiumCloseRisk = _estimatePremium(amount, dailyData.closeRisk);
-
-      return (
-        dailyData.highRisk,
-        dailyData.lowRisk,
-        dailyData.closeRisk,
-        premiumHighRisk,
-        premiumLowRisk,
-        premiumCloseRisk
-      );
-    } else {
-      uint256 premiumHighRisk = _estimatePremium(amount, dailyData.highRisk);
-      uint256 premiumLowRisk = _estimatePremium(amount, dailyData.lowRisk);
-      uint256 premiumCloseRisk = _estimatePremium(amount, dailyData.closeRisk);
-      return (
-        dailyData.highRisk,
-        dailyData.lowRisk,
-        dailyData.closeRisk,
-        premiumHighRisk,
-        premiumLowRisk,
-        premiumCloseRisk
-      );
+      highRisk += riskChange;
+      lowRisk += riskChange;
+      closeRisk += riskChange;
     }
+
+    uint256 premiumHighRisk = _estimatePremium(amount, highRisk);
+    uint256 premiumLowRisk = _estimatePremium(amount, lowRisk);
+    uint256 premiumCloseRisk = _estimatePremium(amount, closeRisk);
+
+    return (highRisk, lowRisk, closeRisk, premiumHighRisk, premiumLowRisk, premiumCloseRisk);
   }
 
   function selectPolicy(uint256 risk) public payable virtual {
-    require(
-      risk == dailyData.highRisk || risk == dailyData.lowRisk || risk == dailyData.closeRisk,
-      "CryptoShield: risk selected out of range"
-    );
+    require(risk == highRisk || risk == lowRisk || risk == closeRisk, "CryptoShield: risk selected out of range");
 
     uint256 amount = msg.value; // Amount to be insured
     uint256 premium = _estimatePremium(amount, risk); // Calculate the premium based on amount and risk
@@ -176,15 +163,13 @@ contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleIn
 
   // callback function called by the chainlink nodes once they have fetched the information requested.
   function fulfillRequest(bytes32 requestId, bytes memory response, bytes memory err) internal override {
-    (
-      dailyData.highPrice,
-      dailyData.lowPrice,
-      dailyData.closePrice,
-      dailyData.highRisk,
-      dailyData.lowRisk,
-      dailyData.closeRisk
-    ) = abi.decode(response, (uint256, uint256, uint256, uint256, uint256, uint256));
-
+    latestResponse = response;
+    latestError = err;
+    (highPrice, lowPrice, closePrice, highRisk, lowRisk, closeRisk) = abi.decode(
+      response,
+      (uint256, uint256, uint256, uint256, uint256, uint256)
+    );
+    fetching = false;
     emit OCRResponse(requestId, response, err);
   }
 
