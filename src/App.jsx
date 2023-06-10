@@ -1,0 +1,34 @@
+import "bootstrap/dist/css/bootstrap.min.css";
+import Landing from "./Landing";
+import { Route, Routes } from "react-router-dom";
+import "./styles/Navbar.css";
+import Dashboard from "./pages/Dashboard"
+import Policies from "./pages/Policies"
+import Settings from "./pages/Settings"
+import PurchasePolicy from "./pages/PurchasePolicy";
+import NavBar from "./components/Navbar";
+import { Row, Col } from "react-bootstrap";
+
+function App() {
+  return (
+    <>
+      <Landing />
+      {/* TODO: Navbar & routed pages reserved for AFTER linking wallet */}
+      <Row>
+        <Col xs={2}>
+          <NavBar />
+        </Col>
+        <Col>
+          <Routes>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/policies" element={<Policies />} />
+            <Route path="/purchase" element={<PurchasePolicy />} />
+            <Route path="/settings" element={<Settings />} />
+          </Routes>
+        </Col>
+      </Row>
+    </>
+  );
+}
+
+export default App;
