@@ -102,6 +102,7 @@ lint/tmp/
 # lint/reports/
 
 gas-report.txt
+Function_instructions.md
 
 contracts/test/fuzzing/crytic-export
 

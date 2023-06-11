@@ -161,6 +161,14 @@ contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleIn
     return price;
   }
 
+  function updateOracleAddress(address oracle) public onlyOwner {
+    setOracle(oracle);
+  }
+
+  function addSimulatedRequestId(address oracleAddress, bytes32 requestId) public onlyOwner {
+    addExternalRequest(oracleAddress, requestId);
+  }
+
   // callback function called by the chainlink nodes once they have fetched the information requested.
   function fulfillRequest(bytes32 requestId, bytes memory response, bytes memory err) internal override {
     latestResponse = response;
@@ -177,13 +185,5 @@ contract CryptoShield is FunctionsClient, ConfirmedOwner, AutomationCompatibleIn
     // Calculate the premium based on the amount and selected risk
     uint256 premium = (amount * uint256(selectedRisk)) / 100;
     return premium;
-  }
-
-  function updateOracleAddress(address oracle) public onlyOwner {
-    setOracle(oracle);
-  }
-
-  function addSimulatedRequestId(address oracleAddress, bytes32 requestId) public onlyOwner {
-    addExternalRequest(oracleAddress, requestId);
   }
 }
