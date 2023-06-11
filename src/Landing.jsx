@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css'
 import illustration from './assets/illustration.png'
 import howItWorks1 from './assets/how it works1.jpg'
@@ -13,9 +13,30 @@ import './styles/Landing.css'
 import { ethers } from "./ethers-5.6.esm.min.js"
 import { abi, contractAddress } from "./constants.js"
 
-function Landing () {
+function Landing ({quoteData, setQuoteData, quoteAmount, setQuoteAmount, blockchainData, setBlockchainData}) {
   const [show, setShow] = useState(false);
   const [walletText, setWalletText] = useState("Connect Wallet");
+
+  
+  useEffect(()=>{
+    const getAddress = async () => {
+      const account = await ethereum;
+      let network;
+      if (account.networkVersion === "11155111"){
+        network = "Sepolia"
+      } else if(account.networkVersion === "137"){
+        network = "Polygon"
+      } else if(account.networkVersion === "1"){
+        network = "Ethereum"
+      } else if(account.networkVersion === "80001"){
+        network = "Mumbai"
+      }
+      if(account.selectedAddress != "0x0000000000000000000000000000000000000000"){
+        setWalletText("Connected  " + account.selectedAddress.substring(0,6)+"..."+account.selectedAddress.substring(account.selectedAddress.length-4)+" at "+network);
+      }
+    }
+    getAddress();
+  }, []);
 
   const handleClose = () => setShow(false);
   const handleShow = () => setShow(true);
@@ -28,8 +49,20 @@ function Landing () {
       } catch (error) {
         console.log(error)
       }
+      let objectEthereum = await ethereum;
+      console.log(objectEthereum);
       const accounts = await ethereum.request({ method: "eth_accounts" })
-      setWalletText("Connected  " + accounts[0].substring(0,6)+"..."+accounts[0].substring(accounts[0].length-4));
+      let network;
+      if (objectEthereum.networkVersion === "11155111"){
+        network = "Sepolia"
+      } else if(objectEthereum.networkVersion === "137"){
+        network = "Polygon"
+      } else if(objectEthereum.networkVersion === "1"){
+        network = "Ethereum"
+      } else if(objectEthereum.networkVersion === "80001"){
+        network = "Mumbai"
+      }
+      setWalletText(`Connected  ${accounts[0].substring(0,6)}...${accounts[0].substring(accounts[0].length-4)} at ${network}`);
       setShow(false)
     } else {
       setWalletText("Please install MetaMask");
@@ -37,11 +70,11 @@ function Landing () {
   }
 
   const getQuoteFunction = async () =>{
-    const ethAmount = document.getElementById("quoteAmount").value
+    const ethAmount = ethers.utils.parseEther(document.getElementById("quoteAmount").value)
     const quoteBlockchain = document.getElementById("quoteBlockchain").value
     const quoteDuration = document.getElementById("quoteDuration").value
     const quoteToken = document.getElementById("quoteToken").value
-    if(quoteToken=="--Select Token--" || quoteDuration=="--Select Duration--" || quoteBlockchain=="--Select Blockchain--" || quoteAmount==""){
+    if(quoteToken=="--Select Token--" || quoteDuration=="--Select Duration--" || quoteBlockchain=="--Select Blockchain--" || ethAmount==""){
       document.getElementById('quoteTextarea').value = "There is an empty field that must be filled";
     } else{
       if (typeof window.ethereum !== "undefined") {
@@ -50,6 +83,7 @@ function Landing () {
         const contract = new ethers.Contract(contractAddress, abi, signer)
         
         try {
+          
           const transactionResponse = await contract.getQuote(ethAmount)
           document.getElementById('quoteTextarea').value = "Executing transaction..."
           await transactionResponse.wait(1);
@@ -59,18 +93,22 @@ function Landing () {
           const rep4 = await contract.highPrice()
           const rep5 = await contract.lowPrice()
           const rep6 = await contract.closePrice()
+          setQuoteData([rep1.toString(), rep2.toString(), rep3.toString(), rep4.toString(), rep5.toString(), rep6.toString()])
+          setQuoteAmount(ethAmount);
+          const newBlockchainData = {token: quoteToken, duration: quoteDuration, blockchain: quoteBlockchain};
+          setBlockchainData(newBlockchainData);
           const dataReceived = 
            `
-           highRisk: ${rep1.toString()}
-           lowRisk: ${rep2.toString()}
-           closeRisk: ${rep3.toString()}
-           premiumHighRisk: ${rep4.toString()}
-           premiumLowRisk: ${rep5.toString()}
-           premiumCloseRisk: ${rep6.toString()}
-           `
+           highRisk: ${(rep1/10**15).toString().substring(0,5)}
+           lowRisk: ${(rep2/10**15).toString().substring(0,5)}
+           closeRisk: ${(rep3/10**15).toString().substring(0,5)}
+           premiumHighRisk: ${ethers.utils.formatEther(rep4).toString().substring(0,8)}
+           premiumLowRisk: ${ethers.utils.formatEther(rep5).toString().substring(0,8)}
+           premiumCloseRisk: ${ethers.utils.formatEther(rep6).toString().substring(0,8)}`
            document.getElementById('quoteTextarea').value = dataReceived;
         } catch (error) {
-          console.log(error)
+          console.log(error);
+          document.getElementById('quoteTextarea').value = "Please connect your wallet";
         }
       } else {
         document.getElementById('quoteTextarea').value = "Please install MetaMask";
