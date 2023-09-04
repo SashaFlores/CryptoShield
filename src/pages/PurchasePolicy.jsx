@@ -19,6 +19,7 @@ const PurchasePolicy = () => {
     const policyDuration = document.getElementById("policyDuration").value
     const policyToken = document.getElementById("policyToken").value
     const policyRisk = document.getElementById("policyRisk").value
+    
     if(policyToken=="--Select Token--" || policyDuration=="--Select Duration--" || policyBlockchain=="--Select Blockchain--" || policyRisk=="" || policyAmount==""){
       setButtonText("Empty field")
           setTimeout(()=>{
