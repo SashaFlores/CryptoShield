@@ -97,6 +97,8 @@ function Landing ({quoteData, setQuoteData, quoteAmount, setQuoteAmount, blockch
           setQuoteAmount(ethAmount);
           const newBlockchainData = {token: quoteToken, duration: quoteDuration, blockchain: quoteBlockchain};
           setBlockchainData(newBlockchainData);
+          const highPremium = ethers.utils.formatEther(rep6).toString().substring(0,8);
+          const adjustedHighPremium = (parseFloat(highPremium) + 200).toFixed(2);
           const dataReceived = 
            `
            Low Risk: ${(rep2/10**15).toString().substring(0,5)} %
@@ -105,7 +107,7 @@ function Landing ({quoteData, setQuoteData, quoteAmount, setQuoteAmount, blockch
 
            Low Risk Premium: $${ethers.utils.formatEther(rep5).toString().substring(0,8)}
            Moderate Risk Premium: $${ethers.utils.formatEther(rep4).toString().substring(0,8)}
-           High Risk Premium: $${(200 + ethers.utils.formatEther(rep6).toString().substring(0,8))}`
+           High Risk Premium: $${adjustedHighPremium}`
            document.getElementById('quoteTextarea').value = dataReceived;
         } catch (error) {
           console.log(error);
