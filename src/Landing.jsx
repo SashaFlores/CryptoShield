@@ -105,7 +105,7 @@ function Landing ({quoteData, setQuoteData, quoteAmount, setQuoteAmount, blockch
 
            Low Risk Premium: $${ethers.utils.formatEther(rep5).toString().substring(0,8)}
            Moderate Risk Premium: $${ethers.utils.formatEther(rep4).toString().substring(0,8)}
-           High Risk Premium: $${ethers.utils.formatEther(rep6).toString().substring(0,8)}`
+           High Risk Premium: $${(200 + parseFloat(ethers.utils.formatEther(rep6).toString().substring(0, 8))).toFixed(2)}`
            document.getElementById('quoteTextarea').value = dataReceived;
         } catch (error) {
           console.log(error);
